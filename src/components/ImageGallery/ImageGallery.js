@@ -5,89 +5,143 @@ import { ImageGalleryItem } from 'components/ImageGalleryItem/ImageGalleryItem';
 import { Loader } from 'components/Loader/Loader';
 
 import { getImage } from 'components/Servises/GetImage';
-import { Component } from 'react';
+import { useState, useEffect } from 'react';
 import { ImageGallery, ErrorMessage } from './ImageGallery.styled';
 import { Button } from '../Button/Button';
 
-class ImageList extends Component {
-  state = {
-    images: [],
-    status: 'idle',
-    error: '',
-    page: 1,
-    totalImg: 0,
+export default function ImageList({ imageName }) {
+  const [name, setName] = useState('');
+  const [images, setImages] = useState([]);
+  const [isLoad, setIsLoad] = useState(false);
+  const [error, setError] = useState('');
+  const [page, setPage] = useState();
+  const [totalImg, setTotalImg] = useState(0);
+
+  const handleLoad = () => {
+    setPage(prev => prev + 1);
   };
 
-  handleLoad = () => {
-    this.setState(prev => ({ page: prev.page + 1 }));
-    console.log(this.state.images.length);
-  };
+  useEffect(() => {
+    setPage(1);
+    setIsLoad(false);
+    setImages([]);
+    setTotalImg(0);
+    setName(imageName);
+  }, [imageName]);
 
-  async componentDidUpdate(prevProps, prevState) {
-    try {
-      if (prevProps.imageName !== this.props.imageName) {
-        this.setState({ images: [], status: 'pending', totalImg: 0, page: 1 });
-        const { hits, totalHits } = await getImage(this.props.imageName);
-        this.setState({
-          images: [...hits],
-          status: 'resolved',
-          totalImg: totalHits,
-        });
-        if (hits.length === 0) {
-          return toast.error(`Nothing found for name ${this.props.imageName}!`);
-        }
-        return;
-      }
-
-      if (
-        this.state.page !== 1 &&
-        prevProps.imageName === this.props.imageName &&
-        prevState.page !== this.state.page
-      ) {
-        this.setState({ status: 'pending' });
-        const { hits, totalHits } = await getImage(
-          this.props.imageName,
-          this.state.page
-        );
-        this.setState({
-          images: [...this.state.images, ...hits],
-          status: 'resolved',
-          totalImg: totalHits,
-        });
-        return;
-      }
-    } catch (error) {
-      this.setState({ error, status: 'rejected' });
+  useEffect(() => {
+    if (imageName.trim() === '') {
+      return;
     }
-  }
 
-  render() {
-    const { images, status, error, page, totalImg } = this.state;
-    const isShow = page < Math.ceil(totalImg / 12);
+    const fetchPictures = async () => {
+      setIsLoad(true);
+      try {
+        const { hits, totalHits } = await getImage(name, page);
 
-    if (status === 'pending')
-      return (
-        <>
-          <ImageGallery>
-            <ImageGalleryItem array={images} />
-          </ImageGallery>
-          <Loader />
-        </>
-      );
+        if (hits.length === 0) {
+          setIsLoad(false);
+          setImages([]);
+          setTotalImg(0);
+          return toast.error(`Nothing found for ${imageName}!`);
+        }
+        setImages(prevImages => [...prevImages, ...hits]);
+        setIsLoad(false);
+        setTotalImg(totalHits);
+      } catch (error) {
+        setError(error);
+      }
+    };
+    fetchPictures();
+  }, [name, page]);
 
-    if (status === 'resolved')
-      if (images.length !== 0)
-        return (
-          <>
-            <ImageGallery>
-              <ImageGalleryItem array={images} />
-            </ImageGallery>
-            {isShow && <Button onClick={this.handleLoad}></Button>}
-          </>
-        );
-    if (status === 'rejected')
-      return <ErrorMessage> your request with error {error}</ErrorMessage>;
-  }
+  const isShow = page < Math.ceil(totalImg / 12);
+
+  return (
+    <>
+      {images.length > 0 && (
+        <ImageGallery>
+          <ImageGalleryItem array={images} />
+        </ImageGallery>
+      )}
+      {isLoad && <Loader />}
+      {isShow && <Button onClick={handleLoad}></Button>}
+      {error !== '' && <ErrorMessage>{error}</ErrorMessage>}
+    </>
+  );
 }
 
-export default ImageList;
+// class ImageList extends Component {
+//   state = {
+//     images: [],
+//     isLoad: false,
+//     error: '',
+//     page: 1,
+//     totalImg: 0,
+//   };
+
+//   handleLoad = () => {
+//     this.setState(prev => ({ page: prev.page + 1 }));
+//   };
+
+//   async componentDidUpdate(prevProps, prevState) {
+//     try {
+//       if (prevProps.imageName !== this.props.imageName) {
+//         this.setState({ images: [], isLoad: true, totalImg: 0, page: 1 });
+//         const { hits, totalHits } = await getImage(this.props.imageName);
+//         this.setState({
+//           images: [...hits],
+//           isLoad: false,
+//           totalImg: totalHits,
+//         });
+//         if (hits.length === 0) {
+//           return toast.error(`Nothing found for name ${this.props.imageName}!`);
+//         }
+//         return;
+//       }
+
+//       if (
+//         this.state.page !== 1 &&
+//         prevProps.imageName === this.props.imageName &&
+//         prevState.page !== this.state.page
+//       ) {
+//         this.setState({ isLoad: true });
+//         const { hits, totalHits } = await getImage(
+//           this.props.imageName,
+//           this.state.page
+//         );
+//         this.setState({
+//           images: [...this.state.images, ...hits],
+//           isLoad: false,
+//           totalImg: totalHits,
+//         });
+//         return;
+//       }
+//     } catch (error) {
+//       this.setState({
+//         error: 'Something went wrong, please try again later',
+//         isLoad: false,
+//       });
+//     }
+//   }
+
+//   render() {
+//     const { images, isLoad, page, error, totalImg } = this.state;
+//     const isShow = page < Math.ceil(totalImg / 12);
+
+//     return (
+//       <>
+//         {images.length > 0 && (
+//           <ImageGallery>
+//             <ImageGalleryItem array={images} />
+//           </ImageGallery>
+//         )}
+//         {isLoad && <Loader />}
+//         {isShow && <Button onClick={this.handleLoad}></Button>}
+//         {error !== '' && <ErrorMessage>{error}</ErrorMessage>}
+//       </>
+//     );
+//   }
+// }
+
+// export default ImageList;
