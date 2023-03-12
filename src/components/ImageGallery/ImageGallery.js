@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
